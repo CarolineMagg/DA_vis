@@ -27,13 +27,20 @@ app.config['suppress_callback_exceptions'] = True
 MAX_VALUE_ASSD = 362
 MODELS_SIMPLE1 = ["XNet_T2_relu", "XNet_T2_leaky", "XNet_T2_selu"]
 MODELS_SIMPLE2 = ["XNet_T1_relu", "XNet_T1_leaky", "XNet_T1_selu"]
-MODELS_SIMPLE = [*MODELS_SIMPLE2, *MODELS_SIMPLE1]
-MODELS_CG = ["CG_XNet_T1_relu", "CG_XNet_T2_relu"]
-MODELS_DA = ["SegmS2T_GAN1_relu", "SegmS2T_GAN2_relu", "SegmS2T_GAN5_relu"]
-MODELS_GAN = ["GAN_1+XNet_T1_relu", "GAN_2+XNet_T1_relu", "GAN_5+XNet_T1_relu"]
-MODELS = [*MODELS_SIMPLE, *MODELS_CG, *MODELS_GAN, *MODELS_DA]
-MODELS_BASELINE = [*MODELS_SIMPLE, *MODELS_CG]
-MODELS_DA = [*MODELS_DA, *MODELS_GAN]
+MODELS_SIMPLE_CG = ["CG_XNet_T1_relu", "CG_XNet_T2_relu"]
+MODELS_BASELINE = [*MODELS_SIMPLE1, *MODELS_SIMPLE2, *MODELS_SIMPLE_CG]
+MODELS_SEGMS2T = ["SegmS2T_GAN1_relu", "SegmS2T_GAN2_relu", "SegmS2T_GAN5_relu",
+                  "CG_SegmS2T_GAN1_relu", "CG_SegmS2T_GAN2_relu", "CG_SegmS2T_GAN5_relu"]
+MODELS_GAN_XNET = ["GAN_1+XNet_T1_relu", "GAN_2+XNet_T1_relu", "GAN_5+XNet_T1_relu",
+                   "GAN_1+CG_XNet_T1_relu", "GAN_2+CG_XNet_T1_relu", "GAN_5+CG_XNet_T1_relu"]
+MODELS_DA = [*MODELS_SEGMS2T, *MODELS_GAN_XNET]
+MODELS = [*MODELS_BASELINE, *MODELS_DA]
+MODELS_CG = [*MODELS_SIMPLE_CG,
+             "CG_SegmS2T_GAN1_relu", "CG_SegmS2T_GAN2_relu", "CG_SegmS2T_GAN5_relu",
+             "GAN_1+CG_XNet_T1_relu", "GAN_2+CG_XNet_T1_relu", "GAN_5+CG_XNet_T1_relu"]
+MODELS_NOT_CG = [*MODELS_SIMPLE1, *MODELS_SIMPLE2,
+                 "SegmS2T_GAN1_relu", "SegmS2T_GAN2_relu", "SegmS2T_GAN5_relu",
+                 "GAN_1+XNet_T1_relu", "GAN_2+XNet_T1_relu", "GAN_5+XNet_T1_relu"]
 
 METRICS = ["DSC", "ASSD", "ACC", "TPR", "TNR"]
 
@@ -107,9 +114,13 @@ div_overview_model = html.Div(
                                              options=[{"label": "All", "value": "All"}] +
                                                      [{"label": "Baseline", "value": "Baseline"}] +
                                                      [{"label": "DA", "value": "DA"}] +
+                                                     [{"label": "CG", "value": "CG"}] +
+                                                     [{"label": "NOT_CG", "value": "NOT_CG"}] +
+                                                     [{"label": "SegmS2T", "value": "SegmS2T"}] +
+                                                     [{"label": "Gen+Segm", "value": "Gen+Segm"}] +
                                                      [{"label": k, "value": k} for k in MODELS],
                                              placeholder="Select a list of models...",
-                                             value="All",
+                                             value=["DA"],
                                              multi=True),
                        style={'width': '70%',
                               'display': 'table-cell',
@@ -185,9 +196,13 @@ div_detail_model = html.Div(
                                              options=[{"label": "All", "value": "All"}] +
                                                      [{"label": "Baseline", "value": "Baseline"}] +
                                                      [{"label": "DA", "value": "DA"}] +
+                                                     [{"label": "CG", "value": "CG"}] +
+                                                     [{"label": "NOT_CG", "value": "NOT_CG"}] +
+                                                     [{"label": "SegmS2T", "value": "SegmS2T"}] +
+                                                     [{"label": "Gen+Segm", "value": "Gen+Segm"}] +
                                                      [{"label": k, "value": k} for k in MODELS],
                                              placeholder="Select a list of models...",
-                                             value="All",
+                                             value=["DA"],
                                              multi=True),
                        style={'width': '70%',
                               'display': 'table-cell',
@@ -376,6 +391,18 @@ def get_selected_model_list(models, fixed):
         if "DA" in models:
             models_selected += [m for m in MODELS_DA]
             models_selected.remove("DA")
+        if "CG" in models:
+            models_selected += [m for m in MODELS_CG]
+            models_selected.remove("CG")
+        if "NOT_CG" in models:
+            models_selected += [m for m in MODELS_NOT_CG]
+            models_selected.remove("NOT_CG")
+        if "SegmS2T" in models:
+            models_selected += [m for m in MODELS_SEGMS2T]
+            models_selected.remove("SegmS2T")
+        if "Gen+Segm" in models:
+            models_selected += [m for m in MODELS_GAN_XNET]
+            models_selected.remove("Gen+Segm")
         seen = set()
         models_selected = [x for x in models_selected if not (x in seen or seen.add(x))]
     return models_selected
@@ -389,7 +416,8 @@ def load_data_spinner(n_clicks):
     # if n_clicks == 0 or n_clicks is None:
     #     raise PreventUpdate
     # else:
-    testset = TestSet("/tf/workdir/data/VS_segm/VS_registered/test_processed/", load=True)
+    testset = TestSet("/tf/workdir/data/VS_segm/VS_registered/test_processed/", load=True,
+                      data_load=False, evaluation_load=False)
     df_total = testset.df_total
     return "Data is loaded.", df_total.to_json()
 
@@ -685,7 +713,7 @@ def update_data_detail(info_total, patient_id, n_clicks, metric, models, slice_t
     Output("detail_plot", "figure"),
     Input("df_metric_detail", "data"),
     Input("detail_plot_slider", "value"),
-    Input("detail_plot_slider", "max"),)
+    Input("detail_plot_slider", "max"), )
 def update_heatmap_detail(info, slider_values, slider_max):
     if info is None:
         raise PreventUpdate

@@ -6,7 +6,7 @@ fig_no_data_available.update_layout(
     yaxis={"visible": False},
     annotations=[
         {
-            "text": "No data available.<br>Load data",
+            "text": "No data available.<br>Load data.",
             "xref": "paper",
             "yref": "paper",
             "showarrow": False,
@@ -23,7 +23,7 @@ fig_no_model_selected.update_layout(
     yaxis={"visible": False},
     annotations=[
         {
-            "text": "No model(s) selected.<br>Load model(s)",
+            "text": "No model(s) selected.<br>Load model(s).",
             "xref": "paper",
             "yref": "paper",
             "showarrow": False,

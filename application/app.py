@@ -160,12 +160,7 @@ control_model = html.Div(
 div_control_panel_heatmap = html.Div(
     children=[control_error_metric_dataset,
               html.Br(),
-              control_model,
-              dcc.Store(id='df-metric-overview'),
-              dcc.Store(id='df-metric-detail'),
-              dcc.Store(id='dict-patient-id'),
-              dcc.Store(id='dict-slice-id'),
-              dcc.Store(id='json-selected-models')],
+              control_model],
     style={'display': 'table-cell',
            'width': '66%'})
 
@@ -268,6 +263,11 @@ control_panel = html.Div(
            'display': 'table'},
     children=[div_control_panel_heatmap,
               div_slice_control_panel,
+              dcc.Store(id='df-metric-overview'),
+              dcc.Store(id='df-metric-detail'),
+              dcc.Store(id='dict-patient-id'),
+              dcc.Store(id='dict-slice-id'),
+              dcc.Store(id='json-selected-models'),
               dcc.Store(id='dict-slice-data')])
 
 sub_headers = html.Div(
@@ -314,31 +314,25 @@ heatmap_2 = html.Div(
            'width': '33.3%'}
 )
 slice_plot = html.Div(
-    children=[
-        # html.Div(children=[dcc.Slider(id="visual_slice_slider",
-        #                                     min=0,
-        #                                     max=80,
-        #                                     step=1,
-        #                                     value=0,
-        #                                     tooltip={'always_visible': True},
-        #                                     vertical=True)],
-        #                style={'width': "8%", 'height': "96%",
-        #                       'display': "inline-block", 'position': "relative", "margin-bottom": "5%"}),
-        html.Div(children=[  # dcc.Slider(id='visual_model_slider',
-            #           min=0,
-            #           max=len(MODELS) + 1,
-            #           step=None,
-            #           value=0,
-            #           vertical=False),
-            dcc.Graph(id='slice-plot', figure=fig_no_slice_selected)],
-            style={'width': '100%', 'height': '100%',
-                   'display': "inline-block", 'position': "relative"})],
+    children=[html.Div(children=[dcc.Slider(id='slice-slider',
+                                            className='rc-slider2',
+                                            min=0,
+                                            max=80,
+                                            step=1,
+                                            value=0,
+                                            tooltip={'always_visible': True},
+                                            vertical=True)],
+                       style={'width': '8%', 'height': '100%',
+                              'display': 'inline-block', 'position': 'relative'}),
+              html.Div(children=[dcc.Graph(id='slice-plot', figure=fig_no_slice_selected)],
+                       style={'width': '92%', 'height': '100%',
+                              'display': 'inline-block', 'position': 'relative'})],
     style={'display': 'table-cell',
            'width': '33.3%'}
 )
 first_row = html.Div(
     id='heatmaps',
-    style={'width': '98%',
+    style={'width': '100%',
            'display': 'table'},
     children=[heatmap_1,
               heatmap_2,
@@ -614,6 +608,40 @@ def update_slice_id_detail(clickData):
 
 
 @app.callback(
+    Output('slice-slider', "value"),
+    Output('slice-slider', "min"),
+    Output('slice-slider', "max"),
+    Output('slice-slider', "marks"),
+    Input('df-metric-detail', "data"),
+    Input('dict-slice-id', "data"),
+    Input('slice-slider', "value")
+)
+def update_slice_slider(df_metric_json, json_slice_id, current_slice_id):
+    ctx = dash.callback_context
+    if df_metric_json is None:
+        raise PreventUpdate
+    else:
+        df = pd.read_json(df_metric_json)
+        if len(df) == 0:
+            raise PreventUpdate
+        min_slice = df.iloc[0]["slice"]
+        max_slice = df.iloc[-2]["slice"]
+        if max_slice - min_slice < 20:
+            marks = {k: {'label': str(k)} for k in range(min_slice, max_slice + 1, 1)}
+        else:
+            marks = {k: {'label': str(k)} if idx % 5 == 0 else {'label': ""} for idx, k in
+                     enumerate(range(min_slice, max_slice + 1, 1))}
+            marks[max_slice] = {'label': str(max_slice)}
+        if json_slice_id is None:
+            return int(min_slice+(max_slice-min_slice)/2), min_slice, max_slice, marks
+        if "dict-slice-id.data" == ctx.triggered[0]["prop_id"]:
+            current_slice = int(json.loads(json_slice_id))
+        else:
+            current_slice = current_slice_id
+        return current_slice, min_slice, max_slice, marks
+
+
+@app.callback(
     Output('df-metric-detail', "data"),
     Input('dict-patient-id', "data"),
     Input('json-selected-models', "data"),
@@ -813,15 +841,15 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max):
 @app.callback(
     Output('dict-slice-data', "data"),
     Input('dict-patient-id', "data"),
-    Input('dict-slice-id', "data"),
+    Input('slice-slider', "value"),
     Input('json-selected-models', "data")
 )
-def update_data_slice(json_patient_id, json_slice_id, json_selected_models):
-    if json_patient_id is None or json_slice_id is None or json_selected_models is None:
+def update_data_slice(json_patient_id, slice_id, json_selected_models):
+    if json_patient_id is None or slice_id is None or json_selected_models is None:
         raise PreventUpdate
     else:
         patient_id = int(json.loads(json_patient_id))
-        slice = int(json.loads(json_slice_id))
+        slice = slice_id
         selected_models = json.loads(json_selected_models)
         if selected_models is not None and len(selected_models) == 0:
             return json.dumps({})
@@ -998,7 +1026,7 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
         fig.add_heatmap(z=gt, hoverinfo="skip", showscale=False, colorscale=colorscale_gt,
                         opacity=gt_opacity, name="gt")
 
-        fig.update_layout(margin=dict(l=5, r=5, b=15, t=5, pad=4), uirevision=True)
+        fig.update_layout(margin=dict(l=0, r=0, b=0, t=0, pad=4), uirevision=True)
         return fig
 
 

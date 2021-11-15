@@ -1,9 +1,11 @@
 ########################################################################################################################
 # TestSet containing information about test dataset
 ########################################################################################################################
+import json
 import logging
 import os
 import time
+import ast
 
 import pandas as pd
 import numpy as np
@@ -35,18 +37,24 @@ class TestSet:
     MODELS = [*MODELS_SIMPLE, *MODELS_CG, *MODELS_GAN, *MODELS_DA]
 
     def __init__(self, path="/tf/workdir/data/VS_segm/VS_registered/test_processed/",
-                 dsize=(256, 256), load=False, data_load=False, evaluation_load=True):
+                 dsize=(256, 256), load=True, data_load=False, evaluation_load=False, radiomics_load=False):
         self._path = path
         self._folders = natsorted(os.listdir(path))
         self._dsize = dsize
         self._data_container_0_1 = []
         self._data_container_1_1 = []
         self._df_evaluation = []
-        self.patient_ids = []
+        self._df_radiomics_3d = []
+        self._df_radiomics_2d = []
+        self._patient_ids = []
+        self._patient_ids_radiomics = []
         self._df_total = pd.DataFrame()
+        self._df_signature_3d = pd.DataFrame()
+        self._df_signature_2d = pd.DataFrame()
+        self._df_volume = pd.DataFrame()
 
         if load:
-            self.load_data(data_load, evaluation_load)
+            self.load_data(data_load, evaluation_load, radiomics_load)
 
     @staticmethod
     def lookup_data_call():
@@ -63,12 +71,14 @@ class TestSet:
     def all_models(self):
         return self.MODELS
 
-    def load_data(self, data=False, evaluation=True):
+    def load_data(self, data=False, evaluation=True, radiomics=True):
         logging.info("Load data.")
         patient_ids = []
+        patient_ids_radiomics = []
         if data or evaluation:
             for f in self._folders:
                 folder = os.path.join(self._path, f)
+                patient_id = f.split("/")[-1].split("_")[-1]
                 # load NIFTI data
                 if data:
                     self._data_container_0_1.append(DataContainer(folder, alpha=0, beta=1))
@@ -76,13 +86,32 @@ class TestSet:
                 # load prediction information
                 if evaluation:
                     self._df_evaluation.append(pd.read_json(os.path.join(folder, "evaluation.json")))
-                patient_ids.append(f.split("/")[-1].split("_")[-1])
-            self.patient_ids = patient_ids
+                if radiomics:
+                    if os.path.isfile(os.path.join(folder, "radiomics.json")):
+                        with open(os.path.join(folder, "radiomics.json")) as json_file:
+                            self._df_radiomics_3d.append(json.load(json_file))
+                        patient_ids_radiomics.append(patient_id)
+                    if os.path.isfile(os.path.join(folder, "radiomics_2d.json")):
+                        with open(os.path.join(folder, "radiomics_2d.json")) as json_file:
+                            self._df_radiomics_2d.append(json.load(json_file))
+                patient_ids.append(patient_id)
+            self._patient_ids = patient_ids
+            self._patient_ids_radiomics = patient_ids_radiomics
 
         file_path = "/tf/workdir/DA_vis/data_utils/evaluation_all.json"
         if os.path.isfile(file_path):
             logging.info("Load all evaluation information.")
             self._df_total = pd.read_json(file_path)
+
+        file_path = "/tf/workdir/DA_vis/data_utils/radiomics_all.json"
+        if os.path.isfile(file_path):
+            logging.info("Load all radiomics features.")
+            self._df_signature_3d = pd.read_json(file_path)
+
+        file_path = "/tf/workdir/DA_vis/data_utils/volumentric.json"
+        if os.path.isfile(file_path):
+            logging.info("Load volumetric information.")
+            self._df_volume = pd.read_json(file_path)
 
     def get_patient_data(self, idx, alpha=0, beta=1):
         if alpha == 0 and beta == 1:
@@ -93,7 +122,8 @@ class TestSet:
     @staticmethod
     def calculate_accuracy(conf_mat):
         if type(conf_mat) == dict:
-            return (conf_mat["tp"] + conf_mat["tn"]) / (conf_mat["tp"] + conf_mat["tn"] + conf_mat["fp"] + conf_mat["fn"])
+            return (conf_mat["tp"] + conf_mat["tn"]) / (
+                    conf_mat["tp"] + conf_mat["tn"] + conf_mat["fp"] + conf_mat["fn"])
         else:
             return (conf_mat[3] + conf_mat[0]) / (conf_mat[3] + conf_mat[0] + conf_mat[1] + conf_mat[2])
 
@@ -112,10 +142,72 @@ class TestSet:
             return (conf_mat[0]) / (conf_mat[0] + conf_mat[1]) if conf_mat[0] != 0 else 1.0
 
     @property
+    def list_patient_ids(self):
+        patient_ids = self._patient_ids
+        if len(patient_ids) == 0:
+            for f in self._folders:
+                patient_ids.append(f.split("/")[-1].split("_")[-1])
+        return patient_ids
+
+    @property
+    def list_patient_ids_radiomics(self):
+        patient_ids = self._patient_ids_radiomics
+        if len(patient_ids) == 0:
+            for f in self._folders:
+                if os.path.isfile(os.path.join(self._path, f, "radiomics.json")):
+                    patient_ids.append(f.split("/")[-1].split("_")[-1])
+        return patient_ids
+
+    @property
+    def df_signature_3d(self):
+        if len(self._df_signature_3d) == 0:
+            logging.info("Generate signature df.")
+            # postprocess folder-structure to have a list of values
+            df_radiomics = {"id": self._patient_ids_radiomics}
+            feature_classes = list(self._df_radiomics_3d[0].keys())
+            for cl in feature_classes:
+                cl_dict = {}
+                for key in range(len(self._patient_ids_radiomics)):
+                    cl_dict[key] = self._df_radiomics_3d[key][cl]
+                tmp = {}
+                for idx, d in cl_dict.items():
+                    for f, vals in d.items():
+                        if f in tmp.keys():
+                            tmp[f] = tmp[f] + [vals]
+                        else:
+                            tmp[f] = [vals]
+                df_radiomics[cl] = tmp
+            # generate signature
+            df_sign = pd.DataFrame(columns=["id"])
+            df_sign["id"] = df_radiomics["id"]
+            for fc in feature_classes:
+                for key, vals in df_radiomics[fc].items():
+                    vals = [float(v) for v in vals]
+                    if key == "Skewness":
+                        df_sign[f"{fc}-{key}"] = [1 if a <= 0 else 2 for a in vals]
+                    elif key == "Kurtosis":
+                        df_sign[f"{fc}-{key}"] = [1 if a <= 3 else 2 for a in vals]
+                    elif key == "Elongation":
+                        df_sign[f"{fc}-{key}"] = [1 if a <= np.mean(vals) else 2 for a in vals]
+                    elif key == "Flatness":
+                        df_sign[f"{fc}-{key}"] = [1 if a <= 0.5 else 2 for a in vals]
+                    elif key == "Sphericity":
+                        df_sign[f"{fc}-{key}"] = [1 if a <= np.mean(vals) else 2 for a in vals]
+                    else:
+                        df_sign[f"{fc}-{key}"] = np.digitize(vals, bins=np.linspace(np.min(vals),
+                                                                                    np.nextafter(np.max(vals), np.inf),
+                                                                                    4))
+            self._df_signature_3d = df_sign
+        return self._df_signature_3d
+
+    @property
+    def dict_signature_2d(self):
+        return self._df_radiomics_2d
+
+    @property
     def df_total(self):
         if len(self._df_total) == 0:
             logging.info("Generate total df.")
-            # init dataframes
             # all slices
             df_dice_all = pd.DataFrame(columns=["id", *self.MODELS])
             df_assd_all = pd.DataFrame(columns=["id", *self.MODELS])
@@ -123,12 +215,12 @@ class TestSet:
             df_acc_all = pd.DataFrame(columns=["id", *self.MODELS])
             df_tpr_all = pd.DataFrame(columns=["id", *self.MODELS])
             df_tnr_all = pd.DataFrame(columns=["id", *self.MODELS])
-            df_dice_all["id"] = [*self.patient_ids, "DSC"]
-            df_assd_all["id"] = [*self.patient_ids, "ASSD"]
-            df_conf_mat_all["id"] = [*self.patient_ids, "conf_mat"]
-            df_acc_all["id"] = [*self.patient_ids, "ACC"]
-            df_tpr_all["id"] = [*self.patient_ids, "TPR"]
-            df_tnr_all["id"] = [*self.patient_ids, "TNR"]
+            df_dice_all["id"] = [*self._patient_ids, "DSC"]
+            df_assd_all["id"] = [*self._patient_ids, "ASSD"]
+            df_conf_mat_all["id"] = [*self._patient_ids, "conf_mat"]
+            df_acc_all["id"] = [*self._patient_ids, "ACC"]
+            df_tpr_all["id"] = [*self._patient_ids, "TPR"]
+            df_tnr_all["id"] = [*self._patient_ids, "TNR"]
             # only tumor slices
             df_dice_only_tumor = pd.DataFrame(columns=["id", *self.MODELS])
             df_assd_only_tumor = pd.DataFrame(columns=["id", *self.MODELS])
@@ -136,12 +228,12 @@ class TestSet:
             df_acc_only_tumor = pd.DataFrame(columns=["id", *self.MODELS])
             df_tpr_only_tumor = pd.DataFrame(columns=["id", *self.MODELS])
             df_tnr_only_tumor = pd.DataFrame(columns=["id", *self.MODELS])
-            df_dice_only_tumor["id"] = [*self.patient_ids, "DSC"]
-            df_assd_only_tumor["id"] = [*self.patient_ids, "ASSD"]
-            df_conf_mat_only_tumor["id"] = [*self.patient_ids, "conf_mat"]
-            df_acc_only_tumor["id"] = [*self.patient_ids, "ACC"]
-            df_tpr_only_tumor["id"] = [*self.patient_ids, "TPR"]
-            df_tnr_only_tumor["id"] = [*self.patient_ids, "TNR"]
+            df_dice_only_tumor["id"] = [*self._patient_ids, "DSC"]
+            df_assd_only_tumor["id"] = [*self._patient_ids, "ASSD"]
+            df_conf_mat_only_tumor["id"] = [*self._patient_ids, "conf_mat"]
+            df_acc_only_tumor["id"] = [*self._patient_ids, "ACC"]
+            df_tpr_only_tumor["id"] = [*self._patient_ids, "TPR"]
+            df_tnr_only_tumor["id"] = [*self._patient_ids, "TNR"]
 
             for name in self.MODELS:
                 dice_list = []
@@ -226,14 +318,42 @@ class TestSet:
             self._df_total = collect_df
         return self._df_total
 
+    @property
+    def df_volume(self):
+        df_vol = self._df_volume
+        if len(self._df_volume) == 0:
+            df_vol = pd.DataFrame()
+            for idx, patient_id in enumerate(testset.list_patient_ids):
+                df = self._df_evaluation[idx]
+                df_vol = df_vol.append({"id": patient_id,
+                                        "slice_number": len(df),
+                                        "tumor_slice_number": len(df[df["VS_class_gt"] == 1])}, ignore_index=True)
+            self._df_volume = df_vol
+        return df_vol
+
+    @property
+    def df_features(self):
+        df_feature = pd.DataFrame()
+
+        return df_feature
+
     def __len__(self):
         return len(self._data_container_0_1)
 
 
 if __name__ == "__main__":
-    start = time.time()
     testset = TestSet("/tf/workdir/data/VS_segm/VS_registered/test_processed/", load=True,
-                      data_load=True, evaluation_load=True)
+                      data_load=True, evaluation_load=True, radiomics_load=True)
+    start = time.time()
     df_total = testset.df_total
-    df_total.to_json("/tf/workdir/DA_vis/data_utils/evaluation_all.json")
-    print(time.time() - start)
+    # df_total.to_json("/tf/workdir/DA_vis/data_utils/evaluation_all.json")
+    print("df total", time.time() - start)
+    start = time.time()
+    df_signature = testset.df_signature_3d
+    # df_signature.to_json("/tf/workdir/DA_vis/data_utils/radiomics_all.json")
+    print("df signature", time.time() - start)
+    start = time.time()
+    df_volume = testset.df_volume
+    # df_volume.to_json("/tf/workdir/DA_vis/data_utils/volumentric.json")
+    print("df volume", time.time() - start)
+

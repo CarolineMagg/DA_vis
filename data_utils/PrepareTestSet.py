@@ -4,10 +4,12 @@
 # * generate processed data and store as NIFTI to "test_processed folder"
 # * generate predictions for selected list of models
 # * store predictions, DSC, ASSD per subject in evaluation.json
+# * generate radiomics features for 3D and 2D data (radiomics.json and radiomics_2d.json)
 ########################################################################################################################
 
 import json
 import os
+import shutil
 import time
 import cv2
 import pandas as pd
@@ -16,6 +18,9 @@ import tensorflow as tf
 from medpy import metric
 import nibabel as nib
 from natsort import natsorted
+from radiomics import featureextractor
+import radiomics
+import SimpleITK as sitk
 
 from data_utils.DataContainer import DataContainer
 from model_zoo.losses.dice import DiceLoss, DiceCoefficient
@@ -71,7 +76,7 @@ class DataTransformer:
         Load segmentation
         * resize
         """
-        return cv2.resize(array, dsize=self._dsize, interpolation=cv2.INTER_CUBIC)
+        return cv2.resize(array, dsize=self._dsize, interpolation=cv2.INTER_NEAREST)
 
     def _load_image(self, array, data_type):
         """
@@ -218,12 +223,13 @@ if __name__ == "__main__":
     check_gpu()
 
     DO_DATA_TRANSFORM = False
-    DO_PRED_GENERATION = True
+    DO_PRED_GENERATION = False
+    DO_RADIOMICS_3D = False
+    DO_RADIOMICS_2D = True
 
-    # data paths
-    path = "/tf/workdir/data/VS_segm/VS_registered/test/"
-    folders = natsorted([os.path.join(path, f) for f in os.listdir(path)])
     if DO_DATA_TRANSFORM:
+        path = "/tf/workdir/data/VS_segm/VS_registered/test/"
+        folders = natsorted([os.path.join(path, f) for f in os.listdir(path)])
         print("Transform data.")
         start = time.time()
         for f in folders:
@@ -237,10 +243,9 @@ if __name__ == "__main__":
             container2.transform_and_store_data()
         print(f"Finish transform data in {time.time() - start} sec.")
 
-    # data paths
-    path = "/tf/workdir/data/VS_segm/VS_registered/test_processed/"
-    folders = natsorted([os.path.join(path, f) for f in os.listdir(path)])
     if DO_PRED_GENERATION:
+        path = "/tf/workdir/data/VS_segm/VS_registered/test_processed/"
+        folders = natsorted([os.path.join(path, f) for f in os.listdir(path)])
         print("Generate predictions.")
         start = time.time()
         for f in folders:
@@ -349,3 +354,83 @@ if __name__ == "__main__":
             df.to_json(os.path.join(f, "evaluation.json"))
 
         print(f"Finish generate predictions in {time.time() - start} sec.")
+
+    if DO_RADIOMICS_3D:
+        path = "/tf/workdir/data/VS_segm/VS_registered/test_processed/"
+        folders = natsorted([os.path.join(path, f) for f in os.listdir(path)])
+        print("Extract 3D radiomics features.")
+        # extract features
+        start = time.time()
+        settings = {'binWidth': 25, 'resampledPixelSpacing': None, 'interpolator': sitk.sitkBSpline}
+        extractor = featureextractor.RadiomicsFeatureExtractor(**settings)
+        featureClasses = radiomics.getFeatureClasses()
+        featureClasses.pop("shape2D", "None")
+        for folder in folders:
+            imageName = os.path.join(folder, "vs_gk_t2_refT1_processed_0_1.nii")
+            maskName = os.path.join(folder, "vs_gk_struc1_refT1_processed.nii")
+            featureVectorProc = {}
+            try:
+                featureVector = extractor.execute(imageName, maskName)
+                tmp = {}
+                for idx, featureName in enumerate(featureVector.keys()):
+                    if f"original_" in featureName and "-original_" not in featureName:
+                        tmp[featureName.split('_')[-1] + "-" + featureName.split('_')[-2]] = featureVector[
+                                                                                                 featureName] * 1
+                for fc in featureClasses:
+                    featureVectorProc[fc] = {k.split("-")[0]: str(v) for k, v in tmp.items() if fc in k}
+                with open(os.path.join(folder, "radiomics.json"), 'w') as outfile:
+                    json.dump(featureVectorProc, outfile)
+            except RuntimeError as e:
+                print("error ", folder.split("/")[-1])
+        print(time.time() - start)
+
+    if DO_RADIOMICS_2D:
+        path = "/tf/workdir/data/VS_segm/VS_registered/test_processed/"
+        folders = natsorted([os.path.join(path, f) for f in os.listdir(path)])
+        print("Extract 2D radiomics features.")
+        # extract features
+        start = time.time()
+        settings = {'binWidth': 25, 'resampledPixelSpacing': None, 'interpolator': sitk.sitkBSpline}
+        extractor = featureextractor.RadiomicsFeatureExtractor(**settings)
+        extractor.enableAllFeatures()
+        for folder in folders:
+            # generate tmp 2D data
+            tmp_folder = os.path.join(folder, "tmp")
+            if not os.path.isdir(tmp_folder):
+                os.mkdir(tmp_folder)
+            container = DataContainer(folder)
+            for slice_id in range(len(container)):
+                img = container.t2_scan_slice(slice_id)
+                segm = container.vs_segm_slice(slice_id)
+                fn_img = os.path.join(tmp_folder, f"t2_{slice_id}.nii")
+                fn_segm = os.path.join(tmp_folder, f"slice_{slice_id}.nii")
+                nib.save(nib.Nifti1Image(img, None), fn_img)
+                nib.save(nib.Nifti1Image(segm, None), fn_segm)
+            # generate 2D features
+            files = natsorted([os.path.join(tmp_folder, f) for f in os.listdir(tmp_folder) if "t2" in f])
+            featureVectorProcList = {}
+            for file in files:
+                imageName = file
+                maskName = file.replace("t2", "slice")
+                try:
+                    featureVector = extractor.execute(imageName, maskName)
+                    tmp = {}
+                    featureVectorProc = {}
+                    for idx, featureName in enumerate(featureVector.keys()):
+                        if f"original_" in featureName and "-original_" not in featureName:
+                            tmp[featureName.split('_')[-1] + "-" + featureName.split('_')[-2]] = featureVector[
+                                                                                                     featureName] * 1
+                    featureClasses = radiomics.getFeatureClasses()
+                    for fc in featureClasses:
+                        featureVectorProc[fc] = {k.split("-")[0]: str(v) for k, v in tmp.items() if fc in k}
+                    featureVectorProcList[file.split("_")[-1].split(".")[0]] = featureVectorProc
+                except ValueError:
+                    continue
+            with open(os.path.join(folder, "radiomics_2d.json"), 'w') as outfile:
+                json.dump(featureVectorProcList, outfile)
+            # remove tmp folder again
+            shutil.rmtree(tmp_folder)
+
+        print(time.time() - start)
+
+

@@ -4,6 +4,8 @@
 
 import ast
 import json
+import time
+
 import cv2
 import pandas as pd
 import numpy as np
@@ -288,6 +290,8 @@ control_panel = html.Div(
               dcc.Store(id='df-metric-detail'),
               dcc.Store(id='df-feature-overview'),
               dcc.Store(id='df-feature-detail'),
+              dcc.Store(id='df-heatmap-overview-overlay'),
+              dcc.Store(id='df-heatmap-detail-overlay'),
               dcc.Store(id='dict-bin-mapping'),
               dcc.Store(id='dict-bin-mapping2'),
               dcc.Store(id='dict-patient-id'),
@@ -350,7 +354,7 @@ slice_plot = html.Div(
                        style={'width': '8%', 'height': '100%',
                               'display': 'inline-block', 'position': 'relative'}),
               html.Div(children=[dcc.Graph(id='slice-plot', figure=fig_no_slice_selected)],
-                       style={'width': '92%', 'height': '100%',
+                       style={'width': '92%', 'height': '100%', 'padding-bottom': '5%',
                               'display': 'inline-block', 'position': 'relative'})],
     style={'display': 'table-cell',
            'width': '33.3%'}
@@ -367,12 +371,14 @@ first_row = html.Div(
 # parallel set plots
 parcats_overview = html.Div(
     children=[dcc.Graph(id='parcats-overview',
+                        clear_on_unhover=True,
                         figure=fig_no_data_available)],
     style={'display': 'table-cell',
            'width': '50%'}
 )
 parcats_detail = html.Div(
     children=[dcc.Graph(id="parcats-detail",
+                        clear_on_unhover=True,
                         figure=fig_no_data_selected)],
     style={'display': 'table-cell',
            'width': '50%'}
@@ -395,7 +401,8 @@ app.layout = html.Div(
               control_panel,
               first_row,
               second_row],
-    style={'height': '100%'}
+    style={'height': '100%',
+           'display': 'inline-block'}
 )
 
 
@@ -452,9 +459,6 @@ def get_selected_model_list(models):
     Output('df-volume', "data"),
     Input('load_data', "n_clicks"))
 def load_data_spinner(n_clicks):
-    # if n_clicks == 0 or n_clicks is None:
-    #     raise PreventUpdate
-    # else:
     testset = TestSet("/tf/workdir/data/VS_segm/VS_registered/test_processed/", load=True,
                       data_load=False, evaluation_load=False, radiomics_load=False)
     df_total = testset.df_total
@@ -544,11 +548,39 @@ def update_data_overview(json_df_total, json_selected_models, selected_metric, s
 
 
 @app.callback(
+    Output('df-heatmap-overview-overlay', "data"),
+    Input('df-metric-overview', "data"),
+    Input('df-feature-overview', "data"),
+    Input('parcats-overview', "hoverData"))
+def update_heatmap_overview_overlay(json_df_metric, json_df_features, selected_ids_hover):
+    ctx = dash.callback_context
+    if selected_ids_hover is not None and 'parcats-overview.hoverData' in ctx.triggered[0]["prop_id"]:
+        df_metric = pd.read_json(json_df_metric)
+        df_metric2 = df_metric.copy()
+        df_features = pd.read_json(json_df_features)
+        list_of_points = selected_ids_hover["points"]
+        pointNumbers = []
+        for p in list_of_points:
+            pointNumbers.append(p["pointNumber"])
+        selected_ids = [str(x) for x in df_features["id"][pointNumbers].values.tolist()]
+        idx_selected = [int(idx) for idx, row in df_metric.iterrows() if row["id"] not in selected_ids][
+                       :-1]
+        idx_selected2 = [int(idx) for idx, row in df_metric.iterrows() if row["id"] in selected_ids] + [
+            len(df_metric) - 1]
+        df_metric2.iloc[idx_selected, 1:] = 1
+        df_metric2.iloc[idx_selected2, 1:] = np.NaN
+        return df_metric2.to_json()
+    else:
+        return pd.DataFrame().to_json()
+
+
+@app.callback(
     Output('heatmap-overview', "figure"),
     Input('df-metric-overview', "data"),
     Input('heatmap-overview-slider', "value"),
-    Input('heatmap-overview-slider', "max"))
-def update_heatmap_overview(json_df_metric, slider_values, slider_max):
+    Input('heatmap-overview-slider', "max"),
+    Input('df-heatmap-overview-overlay', "data"))
+def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_overlay):
     if json_df_metric is None:
         raise PreventUpdate
     else:
@@ -597,6 +629,22 @@ def update_heatmap_overview(json_df_metric, slider_values, slider_max):
                                  hoverinfo='text',
                                  text=hovertext,
                                  coloraxis="coloraxis"), 2, 1)
+        # if selected ids -> highlight only those
+        if json_df_overlay is not None:
+            df_metric2 = pd.read_json(json_df_overlay)
+            if len(df_metric2) != 0:
+                colorscale_nan = px.colors.colorbrewer.Greys[0:2]  # px.colors.colorbrewer.Greys_r
+                x2 = list(df_metric2.columns[1:])
+                y2 = list(df_metric2["id"].values[:-1])
+                z2 = [list(df_metric2.iloc[idx][1:].values) for idx in range(len(df_metric2) - 1)]
+                fig.add_trace(go.Heatmap(
+                    x=x2,
+                    y=y2,
+                    z=z2,
+                    hoverongaps=False,
+                    hoverinfo='skip',
+                    colorscale=colorscale_nan,
+                    showscale=False), 2, 1)
         # update layout
         fig.update_layout(xaxis2={'showticklabels': False},
                           xaxis1={'side': 'top', 'showticklabels': True},
@@ -723,11 +771,38 @@ def update_data_detail(json_patient_id, json_selected_models, selected_metric, s
 
 
 @app.callback(
+    Output('df-heatmap-detail-overlay', "data"),
+    Input('df-metric-detail', "data"),
+    Input('df-feature-detail', "data"),
+    Input('parcats-detail', "hoverData"))
+def update_heatmap_detail_overlay(json_df_metric, json_df_features, selected_ids_hover):
+    ctx = dash.callback_context
+    if selected_ids_hover is not None and 'parcats-detail.hoverData' in ctx.triggered[0]["prop_id"]:
+        df_metric = pd.read_json(json_df_metric)
+        df_metric2 = df_metric.copy()
+        df_features = pd.read_json(json_df_features)
+        list_of_points = selected_ids_hover["points"]
+        pointNumbers = []
+        for p in list_of_points:
+            pointNumbers.append(p["pointNumber"])
+        selected_ids = df_features["id"][pointNumbers].values.tolist()
+        idx_selected = [int(idx) for idx, row in df_metric.iterrows() if row["slice"] not in selected_ids][:-1]
+        idx_selected2 = [int(idx) for idx, row in df_metric.iterrows() if row["slice"] in selected_ids] + [
+            len(df_metric) - 1]
+        df_metric2.iloc[idx_selected, 1:] = 1
+        df_metric2.iloc[idx_selected2, 1:] = np.NaN
+        return df_metric2.to_json()
+    else:
+        pd.DataFrame().to_json()
+
+
+@app.callback(
     Output('heatmap-detail', "figure"),
     Input('df-metric-detail', "data"),
     Input('heatmap-detail-slider', "value"),
-    Input('heatmap-detail-slider', "max"), )
-def update_heatmap_detail(df_metric_json, slider_values, slider_max):
+    Input('heatmap-detail-slider', "max"),
+    Input('df-heatmap-detail-overlay', "data"))
+def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_overlay):
     if df_metric_json is None:
         raise PreventUpdate
     else:
@@ -771,10 +846,26 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max):
         fig.add_trace(go.Heatmap(x=x,
                                  y=y,
                                  z=z,
-                                 hoverongaps=True,
+                                 hoverongaps=False,
                                  hoverinfo='text',
                                  text=hovertext,
                                  coloraxis="coloraxis"), 2, 1)
+        # if selected ids -> highlight only those
+        if json_df_overlay is not None:
+            df_metric2 = pd.read_json(json_df_overlay)
+            if len(df_metric2) != 0:
+                colorscale_nan = px.colors.colorbrewer.Greys[0:2]
+                x2 = list(df_metric2.columns[1:])
+                y2 = list(df_metric2["slice"].values[:-1])
+                z2 = [list(df_metric2.iloc[idx][1:].values) for idx in range(len(df_metric2) - 1)]
+                fig.add_trace(go.Heatmap(
+                    x=x2,
+                    y=y2,
+                    z=z2,
+                    hoverongaps=False,
+                    hoverinfo='skip',
+                    colorscale=colorscale_nan,
+                    showscale=False), 2, 1)
         # update layout
         fig.update_layout(xaxis2={'showticklabels': False},
                           xaxis1={'side': 'top', 'showticklabels': True},
@@ -787,7 +878,6 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max):
                                       t=5,
                                       pad=4)
                           )
-
         return fig
 
 
@@ -997,18 +1087,6 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
                 blue = ['rgb(5,48,97)']
             colors = blue + ['rgba(255,255,255,1)'] + red
             colors = [c.replace("rgb", "rgba").replace(")", ",1)") if "rgba" not in c else c for c in colors]
-            # dcolorscale = []
-            # for k in range(len(colors)):
-            #     dcolorscale.extend([[nvals[k], colors[k]], [nvals[k + 1], colors[k]]])
-            # # colorbar ticks
-            # bvals2 = np.array(bvals)
-            # # if len(selected_models) < 5:
-            # #     tickvals = np.linspace(-z_max + 0.5, z_max - 0.5,
-            # #                            len(colors)).tolist()  # [np.mean(bvals[k:k+2]) for k in range(len(bvals)-1)] #
-            # # elif len(selected_models) >= 5:
-            # tickvals = np.linspace(-z_max + 1.5, z_max - 1.5, len(colors)).tolist()
-            # # tickvals = [np.mean(bvals[k:k + 2]) for k in range(len(bvals) - 1)]
-            # ticktext = [f"{k}" for k in bvals2[1:]]
 
         # colorscale gt
         colorscale_gt = [[0, 'rgba(0,0,0,0)'],
@@ -1021,12 +1099,7 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
             dcolorscale.extend([[nvals[k], colors[k]], [nvals[k + 1], colors[k]]])
         # colorbar ticks
         bvals2 = np.array(bvals)
-        # if len(selected_models) < 5:
-        #     tickvals = np.linspace(-z_max + 0.5, z_max - 0.5,
-        #                            len(colors)).tolist()  # [np.mean(bvals[k:k+2]) for k in range(len(bvals)-1)] #
-        # elif len(selected_models) >= 5:
         tickvals = np.linspace(-z_max + 1.5, z_max - 1.5, len(colors)).tolist()
-        # tickvals = [np.mean(bvals[k:k + 2]) for k in range(len(bvals) - 1)]
         ticktext = [f"{k}" for k in bvals2[1:]]
 
         # hovertext
@@ -1038,8 +1111,6 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
                 hovertext[-1].append('value: {}'.format(segm[yi][xi]))
 
         # figure
-        # print(ticktext)
-        # print(tickvals)
         fig = go.Figure()
         fig_img = px.imshow(img, binary_string=True)
         fig.add_trace(fig_img.data[0])  # ,1,1)
@@ -1120,19 +1191,19 @@ def update_data_parcats_overview(df_total_json, df_signature_json, df_volume_jso
         return df_merged.to_json(), json.dumps(dict_performance_bins)
 
 
-def get_feature_lookup_table(features, metric, dataset, type):
+def get_feature_lookup_table(features, metric, dataset, type_level):
     feature_list = []
     if features == "firstorder":
         feature_list = ["Energy", "Skewness", "Kurtosis", "Variance", "Range", "MeanAbsoluteDeviation"]
         # "Entropy", "Uniformity"
     elif features == "shape":
-        if type == "overview":
+        if type_level == "overview":
             feature_list = ["MeshVolume", "SurfaceArea", "Sphericity", "Elongation", "Flatness", "Maximum3DDiameter"]
         else:
             feature_list = ["MeshSurface", "Sphericity", "Elongation", "MaximumDiameter"]
         # "VoxelVolume"
     elif features == "performance":
-        if type == "overview":
+        if type_level == "overview":
             feature_list = ['dice_all', 'dice_only_tumor', 'assd_all', 'assd_only_tumor',
                             'acc_all', 'acc_only_tumor', 'tnr_all', 'tpr_all',
                             'tpr_only_tumor']
@@ -1263,7 +1334,7 @@ def update_parcats_overview(df_plot_json, dict_bin_mapping, selected_metric, sel
                   "TPR": "tpr",
                   "TNR": "tnr"}
         metric = lookup[selected_metric]
-        feature_list = get_feature_lookup_table(selected_features, metric, selected_dataset, type="overview")
+        feature_list = get_feature_lookup_table(selected_features, metric, selected_dataset, type_level="overview")
         df_plot = pd.DataFrame()
         df_plot["id"] = df_new["id"]
         df_plot["slice_number"] = df_new["slice_number"]
@@ -1435,7 +1506,7 @@ def update_parcats_detail(df_plot_json, dict_bin_mapping, selected_metric, selec
                   "TNR": "dice",
                   "TPR": "dice"}
         metric = lookup[selected_metric]
-        feature_list = get_feature_lookup_table(selected_features, metric, selected_dataset, type="detail")
+        feature_list = get_feature_lookup_table(selected_features, metric, selected_dataset, type_level="detail")
         df_plot = pd.DataFrame()
         df_plot["id"] = df_new["id"]
         df_plot["tumor_presence"] = df_new["tumor_presence"]

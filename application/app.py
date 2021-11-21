@@ -1064,20 +1064,6 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
             else:
                 colors = ['rgb(103,0,31)']
             colors = [c.replace("rgb", "rgba").replace(")", ",1)") if "rgba" not in c else c for c in colors]
-            # dcolorscale = []
-            # for k in range(len(colors)):
-            #     dcolorscale.extend([[nvals[k], colors[k]], [nvals[k + 1], colors[k]]])
-            # # colorbar ticks
-            # bvals2 = np.array(bvals)
-            # # tickvals = np.linspace(-z_max + 1, z_max - 1, len(colors)).tolist()
-            # if len(selected_models) < 5:
-            #     tickvals = np.linspace(-z_max + 0.5, z_max - 0.5,
-            #                            len(colors)).tolist()  # [np.mean(bvals[k:k+2]) for k in range(len(bvals)-1)] #
-            # elif len(selected_models) >= 5:
-            #     tickvals = np.linspace(-z_max + 0.5, z_max - 0.5, len(colors)).tolist()  # 1.75
-            # # tickvals = [np.mean(bvals[k:k+2]) for k in range(len(bvals)-1)]
-            # ticktext = [f"{k}" for k in bvals2[1:]]
-
         else:
             # select segm
             segm = np.array(info_dict["segm_subtract"])
@@ -1090,6 +1076,7 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
             else:
                 red = ['rgb(103,0,31)']
                 blue = ['rgb(5,48,97)']
+            z_max = z_max * 2
             colors = blue + ['rgba(255,255,255,1)'] + red
             colors = [c.replace("rgb", "rgba").replace(")", ",1)") if "rgba" not in c else c for c in colors]
 
@@ -1104,7 +1091,7 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
             dcolorscale.extend([[nvals[k], colors[k]], [nvals[k + 1], colors[k]]])
         # colorbar ticks
         bvals2 = np.array(bvals)
-        tickvals = np.linspace(-z_max + 1.5, z_max - 1.5, len(colors)).tolist()
+        tickvals = np.linspace(0.5, z_max - 0.5, len(colors)).tolist()
         ticktext = [f"{k}" for k in bvals2[1:]]
 
         # hovertext
@@ -1125,7 +1112,7 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
         fig.update_yaxes(showticklabels=False)
 
         fig.add_heatmap(z=segm, showscale=True, colorscale=dcolorscale,
-                        zmid=0, hoverongaps=False, text=hovertext, hoverinfo='text',
+                        zmin=0, zmax=z_max, hoverongaps=False, text=hovertext, hoverinfo='text',
                         colorbar=dict(thickness=30, tickmode="array", tickvals=tickvals, ticktext=ticktext),
                         opacity=mask_opacity, name="segm")
 

@@ -2,10 +2,7 @@
 # Visualization application with DASH+Plotly
 ########################################################################################################################
 
-import ast
 import json
-import time
-
 import cv2
 import pandas as pd
 import numpy as np
@@ -16,7 +13,6 @@ from dash import html
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import plotly.express as px
-from natsort import natsorted
 from plotly.subplots import make_subplots
 import plotly.figure_factory as ff
 from sklearn.metrics import confusion_matrix
@@ -26,7 +22,6 @@ from data_utils.DataContainer import DataContainer
 from data_utils.TestSet import TestSet
 
 app = dash.Dash(__name__)
-# app.config['suppress_callback_exceptions'] = True
 
 MAX_VALUE_ASSD = 362
 MODELS_SIMPLE1 = ["XNet_T2_relu", "XNet_T2_leaky", "XNet_T2_selu"]
@@ -65,14 +60,12 @@ load_data = html.Div(
               ],
     style={'width': '15%',
            'verticalAlign': 'middle',
-           'display': 'inline-block'}
-)
+           'display': 'inline-block'})
 header1 = html.Div(
     id='header-1',
     children=html.H1(children='Domain Adaptation Segmentation Evaluation',
                      style={'textAlign': 'center', 'width': '66%', 'color': 'white', 'verticalAlign': 'middle'}),
-    style={'width': '70%', 'display': 'inline-block'}
-)
+    style={'width': '70%', 'display': 'inline-block'})
 github_link = html.Div(
     id='github_link',
     children=[dbc.Button("Github Docu",
@@ -87,16 +80,14 @@ github_link = html.Div(
                        style={'verticalAlign': 'middle', 'textAlign': 'right',
                               'display': 'inline-block'})
               ],
-    style={'width': '15%', 'display': 'inline-block', 'verticalAlign': 'middle'}
-)
+    style={'width': '15%', 'display': 'inline-block', 'verticalAlign': 'middle'})
 div_header = html.Div(
     id='header',
     children=[load_data,
               header1,
               github_link],
     style={'width': '100%',
-           'backgroundColor': 'black'}
-)
+           'backgroundColor': 'black'})
 
 # control panel
 control_error_metric_dataset = html.Div(
@@ -153,8 +144,7 @@ control_error_metric_dataset = html.Div(
                               'display': 'table-cell'}),
               html.Div(children=[],
                        style={'width': '5%',
-                              'display': 'table-cell'})
-              ],
+                              'display': 'table-cell'})],
     style={'display': 'table',
            'width': '97%'})
 control_model = html.Div(
@@ -285,8 +275,7 @@ div_slice_control_panel = html.Div(
               control_gt_2],
     style={'display': 'table-cell',
            'width': '33%',
-           'border-width': '0px 2px 0px 1px', 'border-color': 'black', 'border-style': 'solid'}
-)
+           'border-width': '0px 2px 0px 1px', 'border-color': 'black', 'border-style': 'solid'})
 control_panel = html.Div(
     id="control_panel",
     style={'width': '100%',
@@ -345,13 +334,11 @@ sub_headers = html.Div(
                               'border-width': '2px 1px 2px 1px', 'border-color': 'black', 'border-style': 'solid'}),
               html.Div(children=html.H2("Slice", id='header-slice', style={'textAlign': 'center'}),
                        style={'width': '33.3%', 'display': 'table-cell',
-                              'border-width': '2px 2px 2px 1px', 'border-color': 'black', 'border-style': 'solid'}),
-              ],
+                              'border-width': '2px 2px 2px 1px', 'border-color': 'black', 'border-style': 'solid'})],
     style={'width': '100%',
            'backgroundColor': 'darkgray',
            'borderColor': 'black',
-           'display': 'table'},
-)
+           'display': 'table'})
 
 # heatmaps
 heatmap_1 = html.Div(
@@ -366,8 +353,7 @@ heatmap_1 = html.Div(
                                        'always_visible': True},
                               allowCross=False)],
     style={'display': 'table-cell',
-           'width': '33.3%'}
-)
+           'width': '33.3%'})
 heatmap_2 = html.Div(
     children=[dcc.Graph(id='heatmap-detail',
                         figure=fig_no_data_selected),
@@ -380,8 +366,7 @@ heatmap_2 = html.Div(
                                        'always_visible': True},
                               allowCross=False)],
     style={'display': 'table-cell',
-           'width': '33.3%'}
-)
+           'width': '33.3%'})
 slice_plot = html.Div(
     children=[html.Div(children=[dcc.Slider(id='slice-slider',
                                             className='rc-slider2',
@@ -397,16 +382,14 @@ slice_plot = html.Div(
                        style={'width': '92%', 'height': '100%', 'padding-bottom': '5%',
                               'display': 'inline-block', 'position': 'relative'})],
     style={'display': 'table-cell',
-           'width': '33.3%'}
-)
+           'width': '33.3%'})
 first_row = html.Div(
     id='heatmaps',
     style={'width': '100%',
            'display': 'table'},
     children=[heatmap_1,
               heatmap_2,
-              slice_plot]
-)
+              slice_plot])
 
 # parallel set plots
 parcats_overview = html.Div(
@@ -414,15 +397,13 @@ parcats_overview = html.Div(
                         clear_on_unhover=True,
                         figure=fig_no_data_available)],
     style={'display': 'table-cell',
-           'width': '50%'}
-)
+           'width': '50%'})
 parcats_detail = html.Div(
     children=[dcc.Graph(id="parcats-detail",
                         clear_on_unhover=True,
                         figure=fig_no_data_selected)],
     style={'display': 'table-cell',
-           'width': '50%'}
-)
+           'width': '50%'})
 
 second_row = html.Div(
     id='parallel-set-plots',
@@ -431,8 +412,7 @@ second_row = html.Div(
            'display': 'table',
            'backgroundColor': 'grey'},
     children=[parcats_overview,
-              parcats_detail]
-)
+              parcats_detail])
 
 # layout
 app.layout = html.Div(
@@ -442,8 +422,7 @@ app.layout = html.Div(
               first_row,
               second_row],
     style={'height': '100%',
-           'display': 'inline-block'}
-)
+           'display': 'inline-block'})
 
 
 def get_colorscale_tickvals(metric, slider_values, slider_max):
@@ -549,8 +528,7 @@ def update_slider_detail(metric):
     Output('json-selected-models', "data"),
     Output('dropdown-model', "value"),
     Input('submit-model', "n_clicks"),
-    State('dropdown-model', "value"),
-)
+    State('dropdown-model', "value"))
 def update_selected_models(n_clicks, selected_models):
     if selected_models is None or len(selected_models) == 0:
         return json.dumps([]), []
@@ -622,8 +600,7 @@ def update_heatmap_overview_overlay(json_df_metric, json_df_features, selected_i
     Input('df-heatmap-overview-overlay', "data"),
     Input('df-feature-overview', "data"),
     Input('parcats-overview', 'clickData'),
-    Input('reset-button-overview', "n_clicks")
-)
+    Input('reset-button-overview', "n_clicks"))
 def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_overlay, json_df_features, selected_ids,
                             n_clicks):
     if json_df_metric is None:
@@ -729,8 +706,7 @@ def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_o
                                       r=5,
                                       b=5,
                                       t=5,
-                                      pad=4)
-                          )
+                                      pad=4))
     return fig
 
 
@@ -747,8 +723,7 @@ def update_patient_id_detail(clickData):
 
 @app.callback(
     Output('dict-slice-id', "data"),
-    Input('heatmap-detail', "clickData")
-)
+    Input('heatmap-detail', "clickData"))
 def update_slice_id_detail(clickData):
     if clickData is None:
         raise PreventUpdate
@@ -765,8 +740,7 @@ def update_slice_id_detail(clickData):
     Output('slice-slider', "marks"),
     Input('df-metric-detail', "data"),
     Input('dict-slice-id', "data"),
-    Input('slice-slider', "value")
-)
+    Input('slice-slider', "value"))
 def update_slice_slider(df_metric_json, json_slice_id, current_slice_id):
     ctx = dash.callback_context
     if df_metric_json is None:
@@ -992,89 +966,11 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_ove
         return fig, f"Patient ID {patient_id}"
 
 
-# @app.callback(
-#     Output("df_2d_data", "data"),
-#     Output("visual_model_slider", "marks"),
-#     Output("switches_mask_single", "options"),
-#     Input('dict-patient-id', "data"),
-#     Input("visual_slice_slider", "value"),
-#     Input("visual_model_slider", "value"),
-#     Input("dropdown_detail_model", "value"),
-# )
-# def update_data_2d(info_patient_id, slice_value, model_value, model_list):
-#     if info_patient_id is None:
-#         raise PreventUpdate
-#     else:
-#         patient_id = int(json.loads(info_patient_id))
-#         slice = slice_value
-#         model = model_list[model_value]
-#         print("model at data update time", model_value, model)
-#         marks = {idx: {'label': ''} if idx != model_value else {'label': m} for idx, m in enumerate(model_list)}
-#         options_single = [{"label": "GT", "value": 1}, {"label": model, "value": 2}]
-#         df = pd.read_json(f"/tf/workdir/data/VS_segm/VS_registered/test_processed/vs_gk_{patient_id}/evaluation.json")
-#         container = DataContainer(f"/tf/workdir/data/VS_segm/VS_registered/test_processed/vs_gk_{patient_id}/")
-#         img = container.t2_scan_slice(slice)
-#         if df.iloc[slice][f"VS_class_pred-{model}"] == 1:
-#             segm = cv2.drawContours(np.zeros((256, 256)),
-#                                     [np.array(s) for s in df.iloc[slice][f"VS_segm_pred-{model}"]], -1, (1, 1, 1), 1)
-#         else:
-#             segm = np.zeros((256, 256))
-#         if df.iloc[slice]["VS_class_gt"] == 1:
-#             gt = cv2.drawContours(np.zeros((256, 256)), [np.array(s) for s in df.iloc[slice]["VS_segm_gt"]], -1,
-#                                   (1, 1, 1), -1)
-#         else:
-#             gt = np.zeros((256, 256))
-#         df_2d = pd.DataFrame()
-#         df_2d = df_2d.append({"slice": slice, "img": img, "segm_gt": gt, "class_gt": df.iloc[slice]["VS_class_gt"],
-#                               "segm_pred": segm, "class_pred": df.iloc[slice][f"VS_class_pred-{model}"]},
-#                              ignore_index=True)
-#         return df_2d.to_json(), marks, options_single
-#
-#
-# @app.callback(
-#     Output('slice-plot', "figure"),
-#     Input("df_2d_data", "data"),
-#     Input("switches_mask_single", "value")
-# )
-# def update_visual_plot_2d(info, selected_masks):
-#     if info is None:
-#         raise PreventUpdate
-#     else:
-#         df = pd.read_json(info)
-#         colorscale_segm = [[0, 'rgba(0,0,0,0)'],
-#                            [0.99, 'rgba(0,0,0,0)'],
-#                            [1.0, 'rgba(255,0,0,1)']]  # 165,0,38,1 - RdYlBu[0]
-#         colorscale_gt = [[0, 'rgba(0,0,0,0)'],
-#                          [0.99, 'rgba(0,0,0,0)'],
-#                          [1, 'rgba(0,0,255,1)']]  # 49,54,149,1 - RdYlBu[-1]
-#         fig = go.Figure()
-#         fig_img = px.imshow(np.array(df.iloc[0]["img"]), binary_string=True)
-#         fig.add_trace(fig_img.data[0])
-#         fig.update_traces(opacity=1.0)
-#         fig.update_xaxes(showticklabels=False)
-#         fig.update_yaxes(showticklabels=False)
-#         print("selected mask", selected_masks)
-#         if 1 in selected_masks:
-#             fig.add_heatmap(z=np.array(df.iloc[0]["segm_gt"]), hoverinfo="skip", showscale=False,
-#                             colorscale=colorscale_gt, opacity=0.4)
-#         if 2 in selected_masks:
-#             fig.add_heatmap(z=np.array(df.iloc[0]["segm_pred"]), hoverinfo="skip", showscale=False,
-#                             colorscale=colorscale_segm, opacity=0.8)
-#         fig.update_layout(margin=dict(l=5,
-#                                       r=5,
-#                                       b=5,
-#                                       t=5,
-#                                       pad=4)
-#                           )
-#         return fig
-#
-
 @app.callback(
     Output('dict-slice-data', "data"),
     Input('dict-patient-id', "data"),
     Input('slice-slider', "value"),
-    Input('json-selected-models', "data")
-)
+    Input('json-selected-models', "data"))
 def update_data_slice(json_patient_id, slice_id, json_selected_models):
     if json_patient_id is None or slice_id is None or json_selected_models is None:
         raise PreventUpdate
@@ -1122,8 +1018,7 @@ def update_data_slice(json_patient_id, slice_id, json_selected_models):
 
 @app.callback(
     Output('control_gt_2', "style"),
-    Input('radioitem-gt-toggle', "value"),
-)
+    Input('radioitem-gt-toggle', "value"))
 def update_gt_control(gt_toggle):
     if gt_toggle == "show":
         return {'display': 'table', 'width': '97%'}
@@ -1138,8 +1033,7 @@ def update_gt_control(gt_toggle):
     Input('radioitem-gt-toggle', "value"),
     Input('radioitem-gt-type', "value"),
     Input('slider-mask-opacity', "value"),
-    Input('slider-gt-opacity', "value")
-)
+    Input('slider-gt-opacity', "value"))
 def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, mask_opacity, gt_opacity):
     if json_dict_slice_data is None:
         raise PreventUpdate
@@ -1248,8 +1142,7 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
     Input('df-total', "data"),
     Input('df-signature', "data"),
     Input('df-volume', "data"),
-    Input('json-selected-models', "data"),
-)
+    Input('json-selected-models', "data"))
 def update_data_parcats_overview(df_total_json, df_signature_json, df_volume_json, json_selected_models):
     if df_total_json is None or df_signature_json is None or df_volume_json is None:
         raise PreventUpdate
@@ -1382,8 +1275,7 @@ def get_lookup_dict_overview(bin_mapping):
         # dataset 3D
         "slice_number": dict(ticktext=["80", "79", "70-78", "<70"], categoryarray=[4, 3, 2, 1], label="#Slices"),
         "tumor_slice_number": dict(ticktext=[">20", "15-20", "10-15", "<10"], categoryarray=[4, 3, 2, 1],
-                                   label="#Tumor Slices"),
-    }
+                                   label="#Tumor Slices")}
 
 
 def get_lookup_dict_detail(bin_mapping):
@@ -1418,8 +1310,7 @@ def get_lookup_dict_detail(bin_mapping):
         # dataset 2D
         "tumor_presence": dict(ticktext=['present', 'absent'], categoryarray=[2, 1], label="Presence"),
         "tumor_size": dict(ticktext=['large', 'medium', 'small', 'absent'], categoryarray=[3, 2, 1, 0],
-                           label="Size(px)"),
-    }
+                           label="Size(px)")}
 
 
 @app.callback(
@@ -1428,8 +1319,7 @@ def get_lookup_dict_detail(bin_mapping):
     Input('dict-bin-mapping', "data"),
     Input('dropdown-error-metric', "value"),
     Input('radioitem-dataset', "value"),
-    Input('dropdown-feature', "value")
-)
+    Input('dropdown-feature', "value"))
 def update_parcats_overview(df_plot_json, dict_bin_mapping, selected_metric, selected_dataset, selected_features):
     if df_plot_json is None or selected_metric is None or selected_dataset is None:
         raise PreventUpdate
@@ -1490,8 +1380,7 @@ def update_parcats_overview(df_plot_json, dict_bin_mapping, selected_metric, sel
     Output('df-feature-detail', "data"),
     Output('dict-bin-mapping2', "data"),
     Input('dict-patient-id', "data"),
-    Input('json-selected-models', "data"),
-)
+    Input('json-selected-models', "data"))
 def update_data_parcats_detail(json_patient_id, json_selected_models):
     if json_patient_id is None:
         raise PreventUpdate
@@ -1600,8 +1489,7 @@ def update_data_parcats_detail(json_patient_id, json_selected_models):
     Input('dict-bin-mapping2', "data"),
     Input('dropdown-error-metric', "value"),
     Input('radioitem-dataset', "value"),
-    Input('dropdown-feature', "value"),
-)
+    Input('dropdown-feature', "value"))
 def update_parcats_detail(df_plot_json, dict_bin_mapping, selected_metric, selected_dataset, selected_features):
     if df_plot_json is None or selected_metric is None or selected_dataset is None:
         raise PreventUpdate

@@ -659,13 +659,12 @@ def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_o
                                             annotation_text=[
                                                 [np.round(x, round_dec) for x in
                                                  list(df_metric.iloc[-1][1:].values)]])
-        fig.add_trace(trace.data[0],
-                      1, 1)
+        fig.add_trace(trace.data[0], 1, 1)
         fig.layout.update(trace.layout)
 
         # prepare x,y,z for heatmap
         x = list(df_metric.columns)[1:]
-        y = list(df_metric["id"].values[:-1])
+        y = [str(x) for x in list(df_metric["id"].values[:-1])]
         z = [list(df_metric.iloc[idx][1:].values) for idx in range(len(df_metric) - 1)]
         # create hovertext
         hovertext = list()
@@ -686,7 +685,7 @@ def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_o
         if data_hover:
             colorscale_nan = px.colors.colorbrewer.Greys[0:2]  # px.colors.colorbrewer.Greys_r
             x2 = list(df_metric2.columns[1:])
-            y2 = list(df_metric2["id"].values[:-1])
+            y2 = [str(x) for x in list(df_metric2["id"].values[:-1])]
             z2 = [list(df_metric2.iloc[idx][1:].values) for idx in range(len(df_metric2) - 1)]
             fig.add_trace(go.Heatmap(
                 x=x2,
@@ -905,7 +904,7 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_ove
         fig = make_subplots(rows=2, cols=1,
                             row_heights=[0.1, 0.9], vertical_spacing=0.05, shared_xaxes=True)
         # create annotated heatmap with total values
-        round_dec = 2 if len(df_metric.columns) >= 8 else 3
+        round_dec = 2 if len(df_metric.columns) >= 9 else 3
         trace = ff.create_annotated_heatmap(x=list(df_metric.columns)[1:],
                                             y=["mean"],
                                             z=[list(df_metric.iloc[-1][1:].values)],
@@ -913,13 +912,12 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_ove
                                             coloraxis="coloraxis",
                                             annotation_text=[
                                                 [np.round(x, round_dec) for x in list(df_metric.iloc[-1][1:].values)]])
-        fig.add_trace(trace.data[0],
-                      1, 1)
+        fig.add_trace(trace.data[0], 1, 1)
         fig.layout.update(trace.layout)
 
         # prepare x,y,z for heatmap
         x = list(df_metric.columns)[1:]
-        y = list(df_metric["slice"].values[:-1])
+        y = [str(x) for x in list(df_metric["slice"].values[:-1])]
         z = [list(df_metric.iloc[idx][1:].values) for idx in range(len(df_metric) - 1)]
         # create hovertext
         hovertext = list()
@@ -940,7 +938,7 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_ove
         if data_hover:
             colorscale_nan = px.colors.colorbrewer.Greys[0:2]
             x2 = list(df_metric2.columns[1:])
-            y2 = list(df_metric2["slice"].values[:-1])
+            y2 = [str(x) for x in list(df_metric2["slice"].values[:-1])]
             z2 = [list(df_metric2.iloc[idx][1:].values) for idx in range(len(df_metric2) - 1)]
             fig.add_trace(go.Heatmap(
                 x=x2,
@@ -954,6 +952,7 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_ove
         fig.update_layout(xaxis2={'showticklabels': False},
                           xaxis1={'side': 'top', 'showticklabels': True},
                           yaxis2={'title': 'Slice'},
+                          yaxis2_nticks=len(y),
                           coloraxis={'colorscale': colorscale,
                                      'colorbar': dict(title=metric, tickvals=tickvals, tickmode="array")},
                           margin=dict(l=5,
@@ -1075,12 +1074,8 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
             if z_max > 1:
                 red = n_colors('rgba(246, 192, 174)', 'rgb(174, 57, 18)', z_max, colortype='rgb')
                 blue = n_colors('rgb(70, 3, 159)', 'rgb(231, 213, 254)', z_max, colortype='rgb')
-                # red = n_colors('rgb(253,219,199)', 'rgb(103,0,31)', z_max, colortype='rgb')
-                # blue = n_colors('rgb(5,48,97)', 'rgb(209,229,240)', z_max, colortype='rgb')
             else:
-                # red = ['rgb(103,0,31)']
                 red = ['rgb(174, 57, 18)']
-                # blue = ['rgb(5,48,97)']
                 blue = ['rgb(70, 3, 159)']
             z_max = z_max * 2
             colors = blue + ['rgba(255,255,255,1)'] + red
@@ -1111,7 +1106,7 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
         # figure
         fig = go.Figure()
         fig_img = px.imshow(img, binary_string=True)
-        fig.add_trace(fig_img.data[0])  # ,1,1)
+        fig.add_trace(fig_img.data[0])
         fig.update_traces(hovertemplate=None, hoverinfo="skip")
         fig.update_traces(opacity=1.0)
         fig.update_xaxes(showticklabels=False)

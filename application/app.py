@@ -1060,9 +1060,11 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
             bvals = list(range(0, z_max + 1, 1))
             nvals = [(v - bvals[0]) / (bvals[-1] - bvals[0]) for v in bvals]
             if z_max > 1:
-                colors = n_colors('rgb(253,219,199)', 'rgb(103,0,31)', z_max, colortype='rgb')
+                # colors = n_colors('rgb(253,219,199)', 'rgb(103,0,31)', z_max, colortype='rgb')
+                colors = n_colors('rgba(246, 192, 174)', 'rgb(174, 57, 18)', z_max, colortype='rgb')
             else:
-                colors = ['rgb(103,0,31)']
+                # colors = ['rgb(103,0,31)']
+                colors = ['rgb(174, 57, 18)']
             colors = [c.replace("rgb", "rgba").replace(")", ",1)") if "rgba" not in c else c for c in colors]
         else:
             # select segm
@@ -1071,11 +1073,15 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
             bvals = list(range(-z_max - 1, z_max + 1, 1))
             nvals = [(v - bvals[0]) / (bvals[-1] - bvals[0]) for v in bvals]
             if z_max > 1:
-                red = n_colors('rgb(253,219,199)', 'rgb(103,0,31)', z_max, colortype='rgb')
-                blue = n_colors('rgb(5,48,97)', 'rgb(209,229,240)', z_max, colortype='rgb')
+                red = n_colors('rgba(246, 192, 174)', 'rgb(174, 57, 18)', z_max, colortype='rgb')
+                blue = n_colors('rgb(70, 3, 159)', 'rgb(231, 213, 254)', z_max, colortype='rgb')
+                # red = n_colors('rgb(253,219,199)', 'rgb(103,0,31)', z_max, colortype='rgb')
+                # blue = n_colors('rgb(5,48,97)', 'rgb(209,229,240)', z_max, colortype='rgb')
             else:
-                red = ['rgb(103,0,31)']
-                blue = ['rgb(5,48,97)']
+                # red = ['rgb(103,0,31)']
+                red = ['rgb(174, 57, 18)']
+                # blue = ['rgb(5,48,97)']
+                blue = ['rgb(70, 3, 159)']
             z_max = z_max * 2
             colors = blue + ['rgba(255,255,255,1)'] + red
             colors = [c.replace("rgb", "rgba").replace(")", ",1)") if "rgba" not in c else c for c in colors]
@@ -1111,6 +1117,8 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
 
+        if view_type == "subtraction":
+            segm[segm != 0] += z_max//2
         fig.add_heatmap(z=segm, showscale=True, colorscale=dcolorscale,
                         zmin=0, zmax=z_max, hoverongaps=False, text=hovertext, hoverinfo='text',
                         colorbar=dict(thickness=30, tickmode="array", tickvals=tickvals, ticktext=ticktext),

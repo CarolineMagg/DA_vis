@@ -736,19 +736,17 @@ def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_o
 
 @app.callback(
     Output('dict-patient-id', "data"),
-    Output('header-detail', "children"),
     Input('heatmap-overview', "clickData"))
 def update_patient_id_detail(clickData):
     if clickData is None:
         raise PreventUpdate
     else:
         patient_id = clickData["points"][0]["y"]
-        return json.dumps(patient_id), f"Patient ID {patient_id}"
+        return json.dumps(patient_id)
 
 
 @app.callback(
     Output('dict-slice-id', "data"),
-    Output('header-slice', "children"),
     Input('heatmap-detail', "clickData")
 )
 def update_slice_id_detail(clickData):
@@ -756,11 +754,12 @@ def update_slice_id_detail(clickData):
         raise PreventUpdate
     else:
         slice_id = clickData["points"][0]["y"]
-        return json.dumps(slice_id), f"Slice ID {slice_id}"
+        return json.dumps(slice_id)
 
 
 @app.callback(
     Output('slice-slider', "value"),
+    Output('header-slice', "children"),
     Output('slice-slider', "min"),
     Output('slice-slider', "max"),
     Output('slice-slider', "marks"),
@@ -785,12 +784,13 @@ def update_slice_slider(df_metric_json, json_slice_id, current_slice_id):
                      enumerate(range(min_slice, max_slice + 1, 1))}
             marks[max_slice] = {'label': str(max_slice)}
         if json_slice_id is None:
-            return int(min_slice + (max_slice - min_slice) / 2), min_slice, max_slice, marks
+            current_slice = int(min_slice + (max_slice - min_slice) / 2)
+            return current_slice, f"Slice ID {current_slice}", min_slice, max_slice, marks
         if "dict-slice-id.data" == ctx.triggered[0]["prop_id"]:
             current_slice = int(json.loads(json_slice_id))
         else:
             current_slice = current_slice_id
-        return current_slice, min_slice, max_slice, marks
+        return current_slice, f"Slice ID {current_slice}", min_slice, max_slice, marks
 
 
 @app.callback(
@@ -803,7 +803,7 @@ def update_data_detail(json_patient_id, json_selected_models, selected_metric, s
     if json_patient_id is None:
         raise PreventUpdate
     else:
-        patient_id = int(json.loads(json_patient_id))  # int(clickData["points"][0]["y"])
+        patient_id = int(json.loads(json_patient_id))
         df = pd.read_json(f"/tf/workdir/data/VS_segm/VS_registered/test_processed/vs_gk_{patient_id}/evaluation.json")
         selected_models = json.loads(json_selected_models)
         if selected_models is not None and len(selected_models) == 0:
@@ -872,18 +872,21 @@ def update_heatmap_detail_overlay(json_df_metric, json_df_features, selected_ids
 
 @app.callback(
     Output('heatmap-detail', "figure"),
+    Output('header-detail', "children"),
     Input('df-metric-detail', "data"),
     Input('heatmap-detail-slider', "value"),
     Input('heatmap-detail-slider', "max"),
     Input('df-heatmap-detail-overlay', "data"),
     Input('df-feature-detail', "data"),
     Input('parcats-detail', 'clickData'),
-    Input('reset-button-detail', "n_clicks"))
+    Input('reset-button-detail', "n_clicks"),
+    Input('dict-patient-id', "data"))
 def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_overlay, json_df_features, selected_ids,
-                          n_clicks):
+                          n_clicks, json_patient_id):
     if df_metric_json is None:
         raise PreventUpdate
     else:
+        patient_id = int(json.loads(json_patient_id))
         # set flags for data
         ctx = dash.callback_context
         df_metric2 = pd.DataFrame()
@@ -986,7 +989,7 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_ove
                                       pad=4),
                           uirevision=True
                           )
-        return fig
+        return fig, f"Patient ID {patient_id}"
 
 
 # @app.callback(

@@ -52,35 +52,42 @@ METRICS = ["DSC", "ASSD", "ACC", "TPR", "TNR"]
 load_data = html.Div(
     id="load_data",
     children=[html.Div(children=[dbc.Button('Load Data', color='primary', size='sm', id='button-load-data')],
-                       style={'width': '30%', 'display': 'inline-block'}),
+                       style={'width': '30%', 'display': 'inline-block', 'textAlign': 'center',
+                              'verticalAlign': 'middle'}),
               html.Div(children=[dcc.Loading(id='loading-data', type="default",
                                              children=html.Div(id='loading-data-output',
                                                                style={'color': 'lightgray'}))],
-                       style={'width': '70%', 'display': 'inline-block', 'textAlign': 'left'}),
+                       style={'width': '70%', 'display': 'inline-block', 'textAlign': 'left',
+                              'verticalAlign': 'middle'}),
               dcc.Store(id='df-total'),
               dcc.Store(id='df-signature'),
               dcc.Store(id='df-volume')
               ],
     style={'width': '15%',
-           'verticalAlign': 'center',
+           'verticalAlign': 'middle',
            'display': 'inline-block'}
 )
 header1 = html.Div(
     id='header-1',
     children=html.H1(children='Domain Adaptation Segmentation Evaluation',
-                     style={'textAlign': 'center', 'width': '66%', 'color': 'white'}),
-    style={'width': '75%', 'display': 'inline-block'}
+                     style={'textAlign': 'center', 'width': '66%', 'color': 'white', 'verticalAlign': 'middle'}),
+    style={'width': '70%', 'display': 'inline-block'}
 )
 github_link = html.Div(
     id='github_link',
-    children=[html.Img(id="logo", src=app.get_asset_url("dash-logo.png"),
-                       width='50%', style={'verticalAlign': 'center'}),
-              dbc.Button("Github Repo",
+    children=[dbc.Button("Github Docu",
                          id='github_link_redirect',
-                         href='https://github.com/CarolineMagg/DA_brain',
-                         style={'textAlign': 'center'}
-                         )],
-    style={'width': '10%', 'display': 'inline-block'}
+                         color='light',
+                         outline=True,
+                         href='https://github.com/CarolineMagg/DA_vis#readme',
+                         style={'verticalAlign': 'middle', 'textAlign': 'left',
+                                'display': 'inline-block', 'width': '45%'}),
+              html.Img(id="logo", src=app.get_asset_url("dash-logo-border.png"),
+                       width='55%',
+                       style={'verticalAlign': 'middle', 'textAlign': 'right',
+                              'display': 'inline-block'})
+              ],
+    style={'width': '15%', 'display': 'inline-block', 'verticalAlign': 'middle'}
 )
 div_header = html.Div(
     id='header',
@@ -175,7 +182,7 @@ control_model = html.Div(
               html.Div(children=[html.Button(id='submit-model', n_clicks=0, children="Apply")],
                        style={'width': '5%',
                               'display': 'table-cell',
-                              'verticalAlign': 'center',
+                              'verticalAlign': 'middle',
                               'align': 'center'})],
     style={'display': 'table',
            'width': '97%'})
@@ -324,7 +331,7 @@ h2_detail = html.Div(children=html.H2("Patient", id='header-detail', style={'tex
 
 empty = html.Div(children=[],
                  style={'width': '30%',
-                        'verticalAlign': 'center',
+                        'verticalAlign': 'middle',
                         'display': 'inline-block',
                         'textAlign': 'right'})
 

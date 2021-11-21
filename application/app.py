@@ -1363,7 +1363,8 @@ def update_parcats_overview(df_plot_json, dict_bin_mapping, selected_metric, sel
                 feature_dim.append(go.parcats.Dimension(values=df_plot[f], label=f, **lookup_dict[f]))
         # Create parcats trace
         color = df_plot[performance_col]
-        colorscale = [[0, 'mediumseagreen'], [1, 'lightsteelblue']]
+        # colorscale = [[0, 'mediumseagreen'], [1, 'lightsteelblue']]
+        colorscale = [[0, 'rgb(82,82,82)'], [1, 'rgb(200,200,200)']]
         fig = go.Figure(data=[go.Parcats(dimensions=[*perf_dim, *feature_dim],
                                          line={'color': color, 'colorscale': colorscale}, bundlecolors=True,
                                          hoveron='category', hoverinfo='count+probability',
@@ -1535,7 +1536,8 @@ def update_parcats_detail(df_plot_json, dict_bin_mapping, selected_metric, selec
                 feature_dim.append(go.parcats.Dimension(values=df_plot[f], label=f, **lookup_dict[f]))
         # Create parcats trace
         color = df_plot[performance_col]
-        colorscale = [[0, 'mediumseagreen'], [1, 'lightsteelblue']]
+        # colorscale = [[0, 'mediumseagreen'], [1, 'lightsteelblue']]
+        colorscale = [[0, 'rgb(82,82,82)'], [1, 'rgb(200,200,200)']]
         fig = go.Figure(data=[go.Parcats(dimensions=[*perf_dim, *feature_dim],
                                          line={'color': color, 'colorscale': colorscale}, bundlecolors=True,
                                          hoveron='category', hoverinfo='count+probability',

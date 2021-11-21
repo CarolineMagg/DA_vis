@@ -172,12 +172,11 @@ control_model = html.Div(
                        style={'width': '85%',
                               'display': 'table-cell',
                               'font-size': '85%'}),
-              html.Div(children=html.Button(id='submit-model', n_clicks=0, children="Apply"),
+              html.Div(children=[html.Button(id='submit-model', n_clicks=0, children="Apply")],
                        style={'width': '5%',
                               'display': 'table-cell',
                               'verticalAlign': 'center',
-                              'align': 'center'})
-              ],
+                              'align': 'center'})],
     style={'display': 'table',
            'width': '97%'})
 div_control_panel_heatmap = html.Div(
@@ -185,7 +184,8 @@ div_control_panel_heatmap = html.Div(
               html.Br(),
               control_model],
     style={'display': 'table-cell',
-           'width': '66%'})
+           'width': '66%',
+           'border-width': '0px 1px 0px 2px', 'border-color': 'black', 'border-style': 'solid'})
 
 control_prediction = html.Div(
     children=[html.Div(children=html.Label("Mask:"),
@@ -277,7 +277,8 @@ div_slice_control_panel = html.Div(
               html.Br(),
               control_gt_2],
     style={'display': 'table-cell',
-           'width': '33%'}
+           'width': '33%',
+           'border-width': '0px 2px 0px 1px', 'border-color': 'black', 'border-style': 'solid'}
 )
 control_panel = html.Div(
     id="control_panel",
@@ -299,14 +300,45 @@ control_panel = html.Div(
               dcc.Store(id='json-selected-models'),
               dcc.Store(id='dict-slice-data')])
 
+button1 = html.Div(children=html.Button(id='reset-button-overview', n_clicks=0, children="Reset"),
+                   style={'width': '30%',
+                          'verticalAlign': 'middle',
+                          'display': 'inline-block',
+                          'textAlign': 'left'})
+h2_overview = html.Div(children=html.H2("All Patients", id='header-overview', style={'textAlign': 'center'}),
+                       style={'width': '40%',
+                              'display': 'inline-block',
+                              'verticalAlign': 'middle',
+                              'textAlign': 'center'})
+
+button2 = html.Div(children=html.Button(id='reset-button-detail', n_clicks=0, children="Reset"),
+                   style={'width': '30%',
+                          'verticalAlign': 'middle',
+                          'display': 'inline-block',
+                          'textAlign': 'left'})
+h2_detail = html.Div(children=html.H2("Patient", id='header-detail', style={'textAlign': 'center'}),
+                     style={'width': '40%',
+                            'display': 'inline-block',
+                            'verticalAlign': 'middle',
+                            'textAlign': 'center'})
+
+empty = html.Div(children=[],
+                 style={'width': '30%',
+                        'verticalAlign': 'center',
+                        'display': 'inline-block',
+                        'textAlign': 'right'})
+
 sub_headers = html.Div(
     id='sub-headers',
-    children=[html.Div(children=html.H2("All Patients", id='header-overview', style={'textAlign': 'center'}),
-                       style={'width': '33.3%', 'display': 'table-cell'}),
-              html.Div(children=html.H2("Patient", id='header-detail', style={'textAlign': 'center'}),
-                       style={'width': '33.3%', 'display': 'table-cell'}),
+    children=[html.Div(children=[empty, h2_overview, button1],
+                       style={'width': '33.3%', 'display': 'table-cell',
+                              'border-width': '2px 1px 2px 2px', 'border-color': 'black', 'border-style': 'solid'}),
+              html.Div(children=[empty, h2_detail, button2],
+                       style={'width': '33.3%', 'display': 'table-cell',
+                              'border-width': '2px 1px 2px 1px', 'border-color': 'black', 'border-style': 'solid'}),
               html.Div(children=html.H2("Slice", id='header-slice', style={'textAlign': 'center'}),
-                       style={'width': '33.3%', 'display': 'table-cell'}),
+                       style={'width': '33.3%', 'display': 'table-cell',
+                              'border-width': '2px 2px 2px 1px', 'border-color': 'black', 'border-style': 'solid'}),
               ],
     style={'width': '100%',
            'backgroundColor': 'darkgray',
@@ -330,7 +362,8 @@ heatmap_1 = html.Div(
            'width': '33.3%'}
 )
 heatmap_2 = html.Div(
-    children=[dcc.Graph(id='heatmap-detail', figure=fig_no_data_selected),
+    children=[dcc.Graph(id='heatmap-detail',
+                        figure=fig_no_data_selected),
               dcc.RangeSlider(id='heatmap-detail-slider',
                               min=0,
                               max=1,
@@ -397,8 +430,8 @@ second_row = html.Div(
 # layout
 app.layout = html.Div(
     children=[div_header,
-              sub_headers,
               control_panel,
+              sub_headers,
               first_row,
               second_row],
     style={'height': '100%',
@@ -579,11 +612,35 @@ def update_heatmap_overview_overlay(json_df_metric, json_df_features, selected_i
     Input('df-metric-overview', "data"),
     Input('heatmap-overview-slider', "value"),
     Input('heatmap-overview-slider', "max"),
-    Input('df-heatmap-overview-overlay', "data"))
-def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_overlay):
+    Input('df-heatmap-overview-overlay', "data"),
+    Input('df-feature-overview', "data"),
+    Input('parcats-overview', 'clickData'),
+    Input('reset-button-overview', "n_clicks")
+)
+def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_overlay, json_df_features, selected_ids,
+                            n_clicks):
     if json_df_metric is None:
         raise PreventUpdate
     else:
+        # set flags for data
+        ctx = dash.callback_context
+        df_metric2 = pd.DataFrame()
+        if json_df_overlay is not None:
+            df_metric2 = pd.read_json(json_df_overlay)
+
+        if "reset-button-overview.n_clicks" in ctx.triggered[0]["prop_id"]:
+            data_selected = False
+            data_hover = False
+        elif "df-heatmap-overview-overlay.data" in ctx.triggered[0]["prop_id"] and len(df_metric2) != 0:
+            data_selected = False
+            data_hover = True
+        elif selected_ids is not None:
+            data_selected = True
+            data_hover = False
+        else:
+            data_selected = False
+            data_hover = False
+
         # read dataframe
         df_metric = pd.read_json(json_df_metric)
         if len(df_metric) == 0:
@@ -592,6 +649,18 @@ def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_o
 
         # define colorscale and tickvals
         colorscale, tickvals = get_colorscale_tickvals(metric, slider_values, slider_max)
+
+        # filter for selected data points
+        if data_selected:
+            df_features = pd.read_json(json_df_features)
+            list_of_points = selected_ids["points"]
+            pointNumbers = []
+            for p in list_of_points:
+                pointNumbers.append(p["pointNumber"])
+            selected_ids = [str(x) for x in df_features["id"][pointNumbers].values.tolist()]
+            idx_selected = [int(idx) for idx, row in df_metric.iterrows() if row["id"] in selected_ids] + [
+                len(df_metric) - 1]
+            df_metric = df_metric.iloc[idx_selected, :]
 
         # create figure
         fig = make_subplots(rows=2, cols=1,
@@ -630,21 +699,19 @@ def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_o
                                  text=hovertext,
                                  coloraxis="coloraxis"), 2, 1)
         # if selected ids -> highlight only those
-        if json_df_overlay is not None:
-            df_metric2 = pd.read_json(json_df_overlay)
-            if len(df_metric2) != 0:
-                colorscale_nan = px.colors.colorbrewer.Greys[0:2]  # px.colors.colorbrewer.Greys_r
-                x2 = list(df_metric2.columns[1:])
-                y2 = list(df_metric2["id"].values[:-1])
-                z2 = [list(df_metric2.iloc[idx][1:].values) for idx in range(len(df_metric2) - 1)]
-                fig.add_trace(go.Heatmap(
-                    x=x2,
-                    y=y2,
-                    z=z2,
-                    hoverongaps=False,
-                    hoverinfo='skip',
-                    colorscale=colorscale_nan,
-                    showscale=False), 2, 1)
+        if data_hover:
+            colorscale_nan = px.colors.colorbrewer.Greys[0:2]  # px.colors.colorbrewer.Greys_r
+            x2 = list(df_metric2.columns[1:])
+            y2 = list(df_metric2["id"].values[:-1])
+            z2 = [list(df_metric2.iloc[idx][1:].values) for idx in range(len(df_metric2) - 1)]
+            fig.add_trace(go.Heatmap(
+                x=x2,
+                y=y2,
+                z=z2,
+                hoverongaps=False,
+                hoverinfo='skip',
+                colorscale=colorscale_nan,
+                showscale=False), 2, 1)
         # update layout
         fig.update_layout(xaxis2={'showticklabels': False},
                           xaxis1={'side': 'top', 'showticklabels': True},
@@ -801,11 +868,34 @@ def update_heatmap_detail_overlay(json_df_metric, json_df_features, selected_ids
     Input('df-metric-detail', "data"),
     Input('heatmap-detail-slider', "value"),
     Input('heatmap-detail-slider', "max"),
-    Input('df-heatmap-detail-overlay', "data"))
-def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_overlay):
+    Input('df-heatmap-detail-overlay', "data"),
+    Input('df-feature-detail', "data"),
+    Input('parcats-detail', 'clickData'),
+    Input('reset-button-detail', "n_clicks"))
+def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_overlay, json_df_features, selected_ids,
+                          n_clicks):
     if df_metric_json is None:
         raise PreventUpdate
     else:
+        # set flags for data
+        ctx = dash.callback_context
+        df_metric2 = pd.DataFrame()
+        if json_df_overlay is not None:
+            df_metric2 = pd.read_json(json_df_overlay)
+
+        if "reset-button-detail.n_clicks" in ctx.triggered[0]["prop_id"]:
+            data_selected = False
+            data_hover = False
+        elif "df-heatmap-detail-overlay.data" in ctx.triggered[0]["prop_id"] and len(df_metric2) != 0:
+            data_selected = False
+            data_hover = True
+        elif selected_ids is not None:
+            data_selected = True
+            data_hover = False
+        else:
+            data_selected = False
+            data_hover = False
+
         # read dataframe
         df_metric = pd.read_json(df_metric_json)
         if len(df_metric) == 0:
@@ -814,6 +904,18 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_ove
 
         # define colorscale and tickvals
         colorscale, tickvals = get_colorscale_tickvals(metric, slider_values, slider_max)
+
+        # filter for selected data points
+        if data_selected:
+            df_features = pd.read_json(json_df_features)
+            list_of_points = selected_ids["points"]
+            pointNumbers = []
+            for p in list_of_points:
+                pointNumbers.append(p["pointNumber"])
+            selected_ids = [str(x) for x in df_features["id"][pointNumbers].values.tolist()]
+            idx_selected = [int(idx) for idx, row in df_metric.iterrows() if str(row["slice"]) in selected_ids] + [
+                len(df_metric) - 1]
+            df_metric = df_metric.iloc[idx_selected, :]
 
         # create figure
         fig = make_subplots(rows=2, cols=1,
@@ -851,21 +953,19 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_ove
                                  text=hovertext,
                                  coloraxis="coloraxis"), 2, 1)
         # if selected ids -> highlight only those
-        if json_df_overlay is not None:
-            df_metric2 = pd.read_json(json_df_overlay)
-            if len(df_metric2) != 0:
-                colorscale_nan = px.colors.colorbrewer.Greys[0:2]
-                x2 = list(df_metric2.columns[1:])
-                y2 = list(df_metric2["slice"].values[:-1])
-                z2 = [list(df_metric2.iloc[idx][1:].values) for idx in range(len(df_metric2) - 1)]
-                fig.add_trace(go.Heatmap(
-                    x=x2,
-                    y=y2,
-                    z=z2,
-                    hoverongaps=False,
-                    hoverinfo='skip',
-                    colorscale=colorscale_nan,
-                    showscale=False), 2, 1)
+        if data_hover:
+            colorscale_nan = px.colors.colorbrewer.Greys[0:2]
+            x2 = list(df_metric2.columns[1:])
+            y2 = list(df_metric2["slice"].values[:-1])
+            z2 = [list(df_metric2.iloc[idx][1:].values) for idx in range(len(df_metric2) - 1)]
+            fig.add_trace(go.Heatmap(
+                x=x2,
+                y=y2,
+                z=z2,
+                hoverongaps=False,
+                hoverinfo='skip',
+                colorscale=colorscale_nan,
+                showscale=False), 2, 1)
         # update layout
         fig.update_layout(xaxis2={'showticklabels': False},
                           xaxis1={'side': 'top', 'showticklabels': True},
@@ -876,7 +976,8 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_ove
                                       r=5,
                                       b=5,
                                       t=5,
-                                      pad=4)
+                                      pad=4),
+                          uirevision=True
                           )
         return fig
 

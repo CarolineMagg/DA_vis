@@ -21,7 +21,7 @@ from application.default_figures import *
 from data_utils.DataContainer import DataContainer
 from data_utils.TestSet import TestSet
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, title="DABrainVisApp")
 
 MAX_VALUE_ASSD = 362
 MODELS_SIMPLE1 = ["XNet_T2_relu", "XNet_T2_leaky", "XNet_T2_selu"]

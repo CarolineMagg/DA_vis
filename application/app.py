@@ -1113,7 +1113,7 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
         fig.update_yaxes(showticklabels=False)
 
         if view_type == "subtraction":
-            segm[segm != 0] += z_max//2
+            segm[segm != 0] += z_max // 2
         fig.add_heatmap(z=segm, showscale=True, colorscale=dcolorscale,
                         zmin=0, zmax=z_max, hoverongaps=False, text=hovertext, hoverinfo='text',
                         colorbar=dict(thickness=30, tickmode="array", tickvals=tickvals, ticktext=ticktext),
@@ -1122,7 +1122,7 @@ def update_heatmap_slice(json_dict_slice_data, view_type, gt_toggle, gt_type, ma
         fig.add_heatmap(z=gt, hoverinfo="skip", showscale=False, colorscale=colorscale_gt,
                         opacity=gt_opacity, name="gt")
 
-        fig.update_layout(margin=dict(l=0, r=0, b=0, t=0, pad=4), uirevision=True)
+        fig.update_layout(margin=dict(l=0, r=0, b=5, t=15, pad=4), uirevision=True)
         return fig
 
 
@@ -1359,11 +1359,7 @@ def update_parcats_overview(df_plot_json, dict_bin_mapping, selected_metric, sel
                                          line={'color': color, 'colorscale': colorscale}, bundlecolors=True,
                                          hoveron='category', hoverinfo='count+probability',
                                          arrangement='freeform')])
-        fig.update_layout(margin=dict(l=20,
-                                      r=20,
-                                      b=5,
-                                      t=20,
-                                      pad=4))
+        fig.update_layout(margin=dict(l=20, r=20, b=5, t=40, pad=4))
         return fig
 
 
@@ -1532,11 +1528,7 @@ def update_parcats_detail(df_plot_json, dict_bin_mapping, selected_metric, selec
                                          line={'color': color, 'colorscale': colorscale}, bundlecolors=True,
                                          hoveron='category', hoverinfo='count+probability',
                                          arrangement='freeform')])
-        fig.update_layout(margin=dict(l=20,
-                                      r=20,
-                                      b=5,
-                                      t=20,
-                                      pad=4))
+        fig.update_layout(margin=dict(l=20, r=20, b=5, t=40, pad=4))
         return fig
 
 

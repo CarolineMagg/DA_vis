@@ -40,6 +40,8 @@ MODELS_CG = [*MODELS_SIMPLE_CG,
 MODELS_NOT_CG = [*MODELS_SIMPLE1, *MODELS_SIMPLE2,
                  "SegmS2T_GAN1_relu", "SegmS2T_GAN2_relu", "SegmS2T_GAN5_relu",
                  "GAN_1+XNet_T1_relu", "GAN_2+XNet_T1_relu", "GAN_5+XNet_T1_relu"]
+MODELS_BEST = ["XNet_T2_relu", "SegmS2T_GAN5_relu", "SegmS2T_GAN1_relu", "GAN_2+XNet_T1_relu", "GAN_1+XNet_T1_relu",
+               "CG_XNet_T2_relu", "CG_SegmS2T_GAN2_relu", "GAN_2+CG_XNet_T1_relu"]
 
 METRICS = ["DSC", "ASSD", "ACC", "TPR", "TNR"]
 
@@ -158,6 +160,7 @@ control_model = html.Div(
                                              options=[{"label": "All", "value": "All"}] +
                                                      [{"label": "Baseline", "value": "Baseline"}] +
                                                      [{"label": "DA", "value": "DA"}] +
+                                                     [{"label": "Best", "value": "Best"}] +
                                                      [{"label": "CG", "value": "CG"}] +
                                                      [{"label": "NOT_CG", "value": "NOT_CG"}] +
                                                      [{"label": "SegmS2T", "value": "SegmS2T"}] +
@@ -461,6 +464,9 @@ def get_selected_model_list(models):
         if "SegmS2T" in models:
             models_selected += [m for m in MODELS_SEGMS2T]
             models_selected.remove("SegmS2T")
+        if "Best" in models:
+            models_selected += [m for m in MODELS_BEST]
+            models_selected.remove("Best")
         if "Gen+Segm" in models:
             models_selected += [m for m in MODELS_GAN_XNET]
             models_selected.remove("Gen+Segm")
@@ -650,7 +656,8 @@ def update_heatmap_overview(json_df_metric, slider_values, slider_max, json_df_o
         fig = make_subplots(rows=2, cols=1,
                             row_heights=[0.1, 0.9], vertical_spacing=0.05, shared_xaxes=True)
         # create annotated heatmap with total values
-        round_dec = 2 if len(df_metric.columns) >= 8 else 3
+        round_dec = 2 if len(df_metric.columns) >= 11 else 3
+        round_dec = round_dec if len(df_metric.columns) >= 7 else 4
         trace = ff.create_annotated_heatmap(x=list(df_metric.columns)[1:],
                                             y=["mean"],
                                             z=[list(df_metric.iloc[-1][1:].values)],
@@ -904,7 +911,8 @@ def update_heatmap_detail(df_metric_json, slider_values, slider_max, json_df_ove
         fig = make_subplots(rows=2, cols=1,
                             row_heights=[0.1, 0.9], vertical_spacing=0.05, shared_xaxes=True)
         # create annotated heatmap with total values
-        round_dec = 2 if len(df_metric.columns) >= 9 else 3
+        round_dec = 2 if len(df_metric.columns) >= 11 else 3
+        round_dec = round_dec if len(df_metric.columns) >= 7 else 4
         trace = ff.create_annotated_heatmap(x=list(df_metric.columns)[1:],
                                             y=["mean"],
                                             z=[list(df_metric.iloc[-1][1:].values)],

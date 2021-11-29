@@ -67,3 +67,37 @@ fig_no_slice_selected.update_layout(
         }
     ]
 )
+
+fig_not_possible = go.Figure()
+fig_not_possible.update_layout(
+    xaxis={"visible": False},
+    yaxis={"visible": False},
+    annotations=[
+        {
+            "text": "Not enough data for groups in all sets available.<br>Plot can not be generated.",
+            "xref": "paper",
+            "yref": "paper",
+            "showarrow": False,
+            "font": {
+                "size": 28
+            }
+        }
+    ]
+)
+
+fig_not_possible_other_features = go.Figure()
+fig_not_possible_other_features.update_layout(
+    xaxis={"visible": False},
+    yaxis={"visible": False},
+    annotations=[
+        {
+            "text": "Not enough data for groups in all sets available.<br>Try other features.",
+            "xref": "paper",
+            "yref": "paper",
+            "showarrow": False,
+            "font": {
+                "size": 28
+            }
+        }
+    ]
+)

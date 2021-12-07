@@ -1263,8 +1263,7 @@ def get_feature_lookup_table(features, metric, dataset, type_level):
     elif features == "performance":
         if type_level == "overview":
             feature_list = ['dice_all', 'dice_only_tumor', 'assd_all', 'assd_only_tumor',
-                            'acc_all', 'acc_only_tumor', 'tnr_all', 'tpr_all',
-                            'tpr_only_tumor']
+                            'acc_all', 'acc_only_tumor', 'tnr_all', 'tpr_all']  #  'tpr_only_tumor']
         else:
             feature_list = ['dice_all', 'dice_only_tumor', 'assd_all', 'assd_only_tumor']
         feature_list.remove(str(metric + "_" + dataset))

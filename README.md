@@ -1,4 +1,27 @@
-# DA_vis
+# Visual analysis application for automatic segmentation algorithms
+
+This work was done as part of a master thesis.
+
+The web-based visual analysis application allows interactive visual assessment of performances and prediction of automatic segmentation methods.
+
+![visualization overview](https://github.com/CarolineMagg/DA_vis/blob/main/overview.png)
+
+## Tasks
+T1 Overall performance comparison, i.e., for all models and all patients <br>
+T2 Per-patient performance comparison, i.e., all models for one patient <br>
+T3 Per-slice performance comparison, i.e., all models for a specific slice <br>
+T4 Relationship to features, i.e., correlation of performance with the dataset- and image-derived features (radiomic features) <br>
+T5 Anatomy-based predictions, i.e., link to anatomical space
+
+## Visualization techniques
+* performance heatmaps
+* parallel set diagram
+* comparative visualization of segmentation masks with explicit encoding (sum & subtraction)
+
+The implementation is based on [Dash](https://dash.plotly.com/) and [plotly](https://plotly.com/).
+
+## Algorithms
+The work is connected with [Domain Adaptation for Brain VS segmentation](https://github.com/CarolineMagg/DA_brain). 
 
 ## Dataset
 The dataset used for this work is publicly available in The Cancer Imaging Archive (TCIA):
